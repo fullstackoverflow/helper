@@ -2,6 +2,9 @@
   "name": "@tosee/helper",
   "version": "1.0.3",
   "description": "",
+  "bin": {
+    "helper": "dist/index.js"
+  },
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc"
