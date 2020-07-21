@@ -1,3 +1,4 @@
+#! /usr/bin/env node
 import { Cli, Command, UsageError } from 'clipanion';
 import got from 'got';
 import { promisify } from 'util';
