@@ -3,41 +3,54 @@ import { Cli, Command, UsageError } from 'clipanion';
 import got from 'got';
 import { promisify } from 'util';
 import stream from 'stream';
-import { createWriteStream, readFileSync } from 'fs';
+import { createWriteStream, readFileSync, existsSync, statSync } from 'fs';
 import OSS from 'ali-oss';
 import cliProgress from 'cli-progress';
+import { basename, join, resolve } from 'path';
 
 const pipeline = promisify(stream.pipeline);
 
 class Download extends Command {
-    @Command.String(`-i,--input`)
-    public download_path: string;
+    @Command.Array(`-i,--input`)
+    public input_paths: string[];
+
+    @Command.String(`-d,--directory`)
+    public download_dir: string;
 
     @Command.String(`-o,--output`)
     public output_path: string;
 
     @Command.Path(`download`)
     async execute() {
-        if (!this.download_path) {
+        if (!this.input_paths) {
             throw new UsageError(`-i,--input is needed for this commond`);
         }
-        if (!this.output_path) {
-            throw new UsageError(`-o,--output is needed for this commond`);
+        if (!this.output_path && !this.download_dir) {
+            throw new UsageError(`-o,--output or -d,--directory is needed for this commond`);
         }
-        const bar = new cliProgress.SingleBar({
-            format: `Downloading... |{bar}| {percentage}%`,
-            barCompleteChar: '\u2588',
-            barIncompleteChar: '\u2591',
-            hideCursor: true
-        });
-        bar.start(100, 0);
-        await pipeline(
-            got.stream(this.download_path).on("downloadProgress", (progress) => {
-                bar.update(progress.percent * 100);
-            }),
-            createWriteStream(this.output_path)
-        );
-        bar.stop();
+        if (this.input_paths.length > 1 && this.output_path) {
+            throw new UsageError(`multi input can not specific name, use -d,--directory instead`);
+        }
+        if (this.download_dir && (!existsSync(this.download_dir) || !statSync(this.download_dir).isDirectory())) {
+            throw new UsageError(`download directory is not exist or not a directory`);
+        }
+        const multibar = new cliProgress.MultiBar({
+            clearOnComplete: false,
+            hideCursor: true,
+            format: `{filename} |{bar}| {percentage}%`,
+        }, cliProgress.Presets.shades_grey);
+        const max_length = Math.max(...this.input_paths.map(i => basename(i).length));
+        await Promise.all(this.input_paths.map(input_path => {
+            const bar = multibar.create(100, 0);
+            const name = basename(input_path);
+            return pipeline(
+                got.stream(input_path).on("downloadProgress", (progress) => {
+                    bar.update(progress.percent * 100, { filename: name + new Array(max_length - name.length).fill(" ").join("") });
+                }),
+                createWriteStream(this.output_path ?? join(this.download_dir, name))
+            );
+        }))
+        multibar.stop();
     }
 }
 
@@ -54,8 +67,8 @@ function parseJSON(input: string) {
 }
 
 class Upload extends Command {
-    @Command.String(`-i,--input`)
-    public local_path: string;
+    @Command.Array(`-i,--input`)
+    public local_paths: string[];
 
     @Command.String(`-o,--output`)
     public output_path: string;
@@ -67,27 +80,30 @@ class Upload extends Command {
     public type: Type = Type.ALI;
 
     async [Type.ALI](config: OSS.Options) {
-        const bar = new cliProgress.SingleBar({
-            format: `Uploading... |{bar}| {percentage}%`,
-            barCompleteChar: '\u2588',
-            barIncompleteChar: '\u2591',
-            hideCursor: true
-        });
-        bar.start(100, 0)
         const client = new OSS(config);
-        await client.multipartUpload(this.output_path, this.local_path, {
-            parallel: 4,
-            partSize: 1024 * 1024,
-            progress: (p) => {
-                bar.update(p * 100);
-            }
-        })
-        bar.stop();
+        const multibar = new cliProgress.MultiBar({
+            clearOnComplete: false,
+            hideCursor: true,
+            format: `{filename} |{bar}| {percentage}%`,
+        }, cliProgress.Presets.shades_grey);
+        const max_length = Math.max(...this.local_paths.map(i => basename(i).length));
+        await Promise.all(this.local_paths.map(local_path => {
+            const bar = multibar.create(100, 0);
+            const name = basename(local_path);
+            return client.multipartUpload(join(this.output_path, name), local_path, {
+                parallel: 4,
+                partSize: 1024 * 1024,
+                progress: (p) => {
+                    bar.update(p * 100, { filename: name + new Array(max_length - name.length).fill(" ").join("") });
+                }
+            })
+        }))
+        multibar.stop();
     }
 
     @Command.Path(`upload`)
     async execute() {
-        if (!this.local_path) {
+        if (!this.local_paths) {
             throw new UsageError(`-i,--input is needed for this commond`)
         }
         if (!this.config) {
