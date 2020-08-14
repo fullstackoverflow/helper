@@ -44,10 +44,11 @@ export default class Download extends Command {
             const name = basename(input_path);
             return pipeline(
                 got.stream(input_path).on("downloadProgress", (progress) => {
-                    if (!bar) {
-                        bar = multibar.create(100, 0);
+                    if (bar) {
+                        bar.update(progress.percent * 100, { filename: name + new Array(max_length - name.length).fill(" ").join("") });
+                    } else {
+                        bar = multibar.create(100, progress.percent * 100, { filename: name + new Array(max_length - name.length).fill(" ").join("") });
                     }
-                    bar.update(progress.percent * 100, { filename: name + new Array(max_length - name.length).fill(" ").join("") });
                 }),
                 createWriteStream(this.output_path ?? join(this.download_dir, name))
             );
