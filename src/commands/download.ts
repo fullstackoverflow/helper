@@ -40,10 +40,13 @@ export default class Download extends Command {
         }, cliProgress.Presets.shades_grey);
         const max_length = Math.max(...this.input_paths.map(i => basename(i).length));
         await Promise.all(this.input_paths.map(input_path => {
-            const bar = multibar.create(100, 0);
+            let bar: cliProgress.SingleBar;
             const name = basename(input_path);
             return pipeline(
                 got.stream(input_path).on("downloadProgress", (progress) => {
+                    if (!bar) {
+                        bar = multibar.create(100, 0);
+                    }
                     bar.update(progress.percent * 100, { filename: name + new Array(max_length - name.length).fill(" ").join("") });
                 }),
                 createWriteStream(this.output_path ?? join(this.download_dir, name))
