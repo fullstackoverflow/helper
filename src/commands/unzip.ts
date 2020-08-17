@@ -13,8 +13,6 @@ export default class UnZip extends Command {
 
     @Command.Path(`unzip`)
     async execute() {
-        console.log(this.input_path);
-        console.log(this.output_path);
         if (!this.input_path) {
             throw new UsageError(`-i,--input is needed for this commond`);
         }
@@ -22,7 +20,6 @@ export default class UnZip extends Command {
             throw new UsageError(`-o,--output is needed for this commond`);
         }
         const zip = await JSZip.loadAsync(readFileSync(this.input_path));
-        console.log('F1', zip);
         for (let [name] of Object.entries(zip.files)) {
             if (zip.files[name].dir == true) {
                 mkdirSync(join(this.output_path, name));
