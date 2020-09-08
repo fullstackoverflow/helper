@@ -3,9 +3,10 @@ import { Command, UsageError } from 'clipanion';
 import got from 'got';
 import { promisify } from 'util';
 import stream from 'stream';
-import { createWriteStream, existsSync, statSync } from 'fs';
+import { createWriteStream, existsSync, statSync, unlinkSync } from 'fs';
 import cliProgress from 'cli-progress';
 import { basename, join } from 'path';
+import { red } from '../util/format';
 
 const pipeline = promisify(stream.pipeline);
 
@@ -18,6 +19,9 @@ export default class Download extends Command {
 
     @Command.String(`-o,--output`)
     public output_path: string;
+
+    @Command.Boolean(`--safe`)
+    public safe: boolean = false;
 
     @Command.Path(`download`)
     async execute() {
@@ -51,7 +55,14 @@ export default class Download extends Command {
                     }
                 }),
                 createWriteStream(this.output_path ?? join(this.download_dir, name))
-            );
+            ).catch(e => {
+                if (!this.safe) {
+                    throw e;
+                } else {
+                    console.log(red(`Download ${input_path} Failed:`), e);
+                    unlinkSync(this.output_path ?? join(this.download_dir, name));
+                }
+            });
         }))
         multibar.stop();
     }
