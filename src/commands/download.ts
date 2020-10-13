@@ -17,6 +17,9 @@ export default class Download extends Command {
     @Command.String(`-d,--directory`)
     public download_dir: string;
 
+    @Command.String(`--timeout`)
+    public timeout: string;
+
     @Command.String(`-o,--output`)
     public output_path: string;
 
@@ -37,6 +40,9 @@ export default class Download extends Command {
         if (this.download_dir && (!existsSync(this.download_dir) || !statSync(this.download_dir).isDirectory())) {
             throw new UsageError(`download directory is not exist or not a directory`);
         }
+        if (this.timeout && isNaN(Number(this.timeout))) {
+            throw new UsageError(`timeout must be a number`);
+        }
         const multibar = new cliProgress.MultiBar({
             clearOnComplete: false,
             hideCursor: true,
@@ -47,7 +53,7 @@ export default class Download extends Command {
             let bar: cliProgress.SingleBar;
             const name = basename(input_path);
             return pipeline(
-                got.stream(input_path).on("downloadProgress", (progress) => {
+                got.stream(input_path, { timeout: Number(this.timeout) }).on("downloadProgress", (progress) => {
                     if (bar) {
                         bar.update(progress.percent * 100, { filename: name + new Array(max_length - name.length).fill(" ").join("") });
                     } else {
