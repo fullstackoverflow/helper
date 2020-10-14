@@ -1,6 +1,6 @@
 {
   "name": "@tosee/helper",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "",
   "bin": {
     "helper": "dist/index.js"
