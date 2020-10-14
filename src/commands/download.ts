@@ -28,6 +28,8 @@ export default class Download extends Command {
 
     @Command.Path(`download`)
     async execute() {
+        const extra_opt = {
+        };
         if (!this.input_paths) {
             throw new UsageError(`-i,--input is needed for this commond`);
         }
@@ -40,8 +42,12 @@ export default class Download extends Command {
         if (this.download_dir && (!existsSync(this.download_dir) || !statSync(this.download_dir).isDirectory())) {
             throw new UsageError(`download directory is not exist or not a directory`);
         }
-        if (this.timeout && isNaN(Number(this.timeout))) {
-            throw new UsageError(`timeout must be a number`);
+        if (this.timeout) {
+            if (isNaN(Number(this.timeout))) {
+                throw new UsageError(`timeout must be a number`);
+            } else {
+                extra_opt["timeout"] = Number(this.timeout);
+            }
         }
         const multibar = new cliProgress.MultiBar({
             clearOnComplete: false,
@@ -53,7 +59,7 @@ export default class Download extends Command {
             let bar: cliProgress.SingleBar;
             const name = basename(input_path);
             return pipeline(
-                got.stream(input_path, { timeout: Number(this.timeout) }).on("downloadProgress", (progress) => {
+                got.stream(input_path, extra_opt).on("downloadProgress", (progress) => {
                     if (bar) {
                         bar.update(progress.percent * 100, { filename: name + new Array(max_length - name.length).fill(" ").join("") });
                     } else {
