@@ -1,1 +1,0 @@
-export const red = (input: string) => `\x1b[31m\x1b[1m${input}\x1b[22m\x1b[39m`;

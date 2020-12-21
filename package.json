@@ -12,6 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@tosee/color": "^1.0.3",
     "ali-oss": "^6.10.0",
     "cli-progress": "^3.8.2",
     "clipanion": "^2.4.2",

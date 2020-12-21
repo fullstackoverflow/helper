@@ -6,7 +6,7 @@ import stream from 'stream';
 import { createWriteStream, existsSync, statSync, unlinkSync } from 'fs';
 import cliProgress from 'cli-progress';
 import { basename, join } from 'path';
-import { red } from '../util/format';
+import { lightred } from '@tosee/color';
 
 const pipeline = promisify(stream.pipeline);
 
@@ -71,7 +71,7 @@ export default class Download extends Command {
                 if (!this.safe) {
                     throw e;
                 } else {
-                    console.log(red(`Download ${input_path} Failed:`), e);
+                    console.log(lightred`Download ${input_path} Failed:`, e);
                     unlinkSync(this.output_path ?? join(this.download_dir, name));
                 }
             });
